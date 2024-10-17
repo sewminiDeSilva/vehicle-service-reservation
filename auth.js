@@ -3,6 +3,7 @@ const passport = require('passport');
 const OpenIDConnectStrategy = require('passport-openidconnect').Strategy;
 require('dotenv').config();
 
+// OpenID Connect Strategy
 passport.use(new OpenIDConnectStrategy({
   issuer: `https://${process.env.AUTH0_DOMAIN}/`,
   authorizationURL: `https://${process.env.AUTH0_DOMAIN}/authorize`,
@@ -13,34 +14,37 @@ passport.use(new OpenIDConnectStrategy({
   callbackURL: `${process.env.BASE_URL}/callback`,
   scope: 'openid profile email',
 },
-function (issuer, sub, profile, accessToken, refreshToken, done) {
+
+
+function (issuer, profile, done) {
   console.log('Profile received:', profile);
-  if (profile) {
-    return done(null, profile);  // Successful authentication
-  } else {
-    return done(new Error('Profile not found')); // Provide error feedback
-  }
+  // Return profile on success
+  return done(null, profile);
 }));
 
+// Passport serialization logic
 passport.serializeUser((user, done) => {
-    done(null, user);  // Store the user object in the session
+  done(null, user);  // Store the user object in the session
 });
 
 passport.deserializeUser((user, done) => {
-    done(null, user);  // Retrieve the user object from the session
+  done(null, user);  // Retrieve the user object from the session
 });
 
+// Export session and passport configuration
 module.exports = (app) => {
-    app.use(session({ 
-        secret: process.env.SESSION_SECRET || 'your_secret',
-        resave: false,
-        saveUninitialized: false, // Change to false
-        cookie: {
-            httpOnly: true,
-            secure: false, // Set to true in production
-            maxAge: 1000 * 60 * 60 * 24 // 1 day
-        }
-    }));
-    app.use(passport.initialize());
-    app.use(passport.session());
+  app.use(session({ 
+    secret: process.env.SESSION_SECRET || 'your_secret', // Use environment variables for security
+    resave: false,
+    saveUninitialized: false, // Prevent uninitialized sessions
+    cookie: {
+      httpOnly: true,  // Prevent client-side JavaScript from accessing the cookie
+      secure: false,  // Set to true if you're using HTTPS
+      maxAge: 1000 * 60 * 60 * 24  // Set session expiry time (1 day)
+    }
+  }));
+
+  // Initialize passport and session
+  app.use(passport.initialize());
+  app.use(passport.session());
 };
