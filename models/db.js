@@ -1,14 +1,6 @@
 require('dotenv').config();
 const mysql = require('mysql2');
 
-// const connection = mysql.createConnection({
-//   host: 'localhost',
-//   user: 'root',
-//   password: 'Sanath28#',
-//   database: 'vehicle_service_reservation_db'
-// });
-
-
 const connection = mysql.createConnection({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,

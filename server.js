@@ -1,6 +1,7 @@
 // Required modules
 const express = require('express');
 const connection = require('./models/db'); // Assuming db connection is properly configured
+const vehicleRoutes = require('./routes/vehicleRoutes');
 const passport = require('passport');
 const session = require('express-session');
 require('dotenv').config();
@@ -25,20 +26,21 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
+// Middleware for parsing JSON bodies
+app.use(express.json());
+
 // Middleware for Passport.js (assumes 'auth.js' contains strategy setup)
 require('./auth')(app);
 
 // Route to test database connection
 app.get('/test-db', (req, res) => {
-  // Simple test query to check database connection
+
   connection.query('SELECT 1 + 1 AS solution', (error, results) => {
     if (error) {
-      // Error handling
-      res.status(500).send('Database connection failed: ' + error);
-    } else {
-      // Success: send result
-      res.send('Database connection successful! Result: ' + results[0].solution);
+      return res.status(500).send('Database connection failed: ' + error);
     }
+    res.send('Database connection successful! Result: ' + results[0].solution);
+
   });
 });
 
@@ -49,12 +51,9 @@ app.get('/login', passport.authenticate('openidconnect', {
 }));
 
 // Callback route for handling authentication result
-app.get('/callback', passport.authenticate('openidconnect', { failureRedirect: '/' }),
-  (req, res) => {
-    // Successful authentication: redirect to the homepage
-    res.redirect('/');
-  }
-);
+app.get('/callback', passport.authenticate('openidconnect', { failureRedirect: '/' }), (req, res) => {
+  res.redirect('/');
+});
 
 // Logout route, redirecting to Auth0 logout URL
 app.get('/logout', (req, res, next) => {
@@ -62,10 +61,14 @@ app.get('/logout', (req, res, next) => {
     if (err) {
       return next(err);
     }
-    // Redirect to Auth0 logout and then return to your app
+
     res.redirect(`https://${process.env.AUTH0_DOMAIN}/v2/logout?client_id=${process.env.AUTH0_CLIENT_ID}&returnTo=${process.env.BASE_URL}`);
   });
 });
+
+// Use the routes
+app.use('/api/vehicles', vehicleRoutes);
+
 
 // Home route, checking if user is authenticated and displaying profile info
 app.get('/', (req, res) => {
@@ -73,14 +76,15 @@ app.get('/', (req, res) => {
     // Log the user object to check what is available
     console.log("Authenticated user object:", req.user);
 
-    // Extract user profile information
+    // Extract user profile information with fallback checks
     const userProfile = req.user;
     const userEmail = userProfile.emails && userProfile.emails.length > 0 ? userProfile.emails[0].value : 'N/A';
+    const userName = userProfile.displayName || userProfile.name?.givenName || 'User';
     
     // Display user profile information
     const userProfileHTML = `
-      <h1>Hello, ${userProfile.displayName || 'User'}</h1>
-      <p><strong>Username:</strong> ${userProfile.name.givenName || 'N/A'}</p>
+      <h1>Hello, ${userName}</h1>
+      <p><strong>Username:</strong> ${userProfile.name?.givenName || 'N/A'}</p>
       <p><strong>Email:</strong> ${userEmail}</p>
       <p><strong>Contact Number:</strong> N/A</p>
       <p><strong>Country:</strong> N/A</p>
