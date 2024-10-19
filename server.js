@@ -34,7 +34,7 @@ require('./auth')(app);
 
 // Route to test database connection
 app.get('/test-db', (req, res) => {
-
+ 
   connection.query('SELECT 1 + 1 AS solution', (error, results) => {
     if (error) {
       return res.status(500).send('Database connection failed: ' + error);
@@ -61,9 +61,31 @@ app.get('/logout', (req, res, next) => {
     if (err) {
       return next(err);
     }
-
     res.redirect(`https://${process.env.AUTH0_DOMAIN}/v2/logout?client_id=${process.env.AUTH0_CLIENT_ID}&returnTo=${process.env.BASE_URL}`);
   });
+});
+
+// Middleware to check if the user is authenticated
+const isAuthenticated = (req, res, next) => {
+  if (req.isAuthenticated()) {
+    return next();
+  }
+  res.status(401).send('Unauthorized');
+};
+
+// Route to check authentication status
+app.get('/api/auth/status', (req, res) => {
+  if (req.isAuthenticated()) {
+    res.json({
+      authenticated: true,
+      user: req.user
+    });
+  } else {
+    res.status(401).json({
+      authenticated: false,
+      message: 'Unauthorized'
+    });
+  }
 });
 
 // Use the routes
